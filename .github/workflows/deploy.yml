@@ -54,7 +54,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build TypeScript
         run: npm run build
 
       - name: Create target directory on server
