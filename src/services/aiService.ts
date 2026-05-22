@@ -8,7 +8,7 @@ export class AIService {
   constructor() {
     this.ai = new GoogleGenAI(
       {
-        apiKey:process.env.API_KEY,
+        apiKey:process.env.GEMINI_API_KEY as string,
         httpOptions:{
           timeout:80000
         }
