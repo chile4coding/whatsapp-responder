@@ -17,7 +17,10 @@ const sessionPath = process.env.SESSION_PATH || "./sessions";
 
 const sessionManager = new SessionManager(sessionPath);
 const aiService = new AIService();
-const commandHandler = new CommandHandler(aiService, new QuizHandler(aiService));
+const commandHandler = new CommandHandler(
+  aiService,
+  new QuizHandler(aiService),
+);
 const messageHandler = new MessageHandler(aiService);
 const mediaHandler = new MediaHandler(aiService);
 const quizHandler = new QuizHandler(aiService);
@@ -36,7 +39,17 @@ export class WhatsAppBot {
       puppeteer: {
         headless: true,
         executablePath: chromePath,
-        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        timeout: 60000, // increase from default 30s
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+          "--no-first-run",
+          "--no-zygote",
+          "--single-process", // important on low-memory VPS
+          "--disable-extensions",
+        ],
       },
     });
     this.setupEventHandlers();
@@ -98,10 +111,7 @@ export class WhatsAppBot {
     }
   }
 
-  private async handleTextMessage(
-    message: Message,
-    chatId: string,
-  ) {
+  private async handleTextMessage(message: Message, chatId: string) {
     const text = message.body.trim();
     const subjectMode = sessionManager.getActiveSubject(chatId);
     const quizState = sessionManager.getQuizState(chatId);
@@ -112,7 +122,7 @@ export class WhatsAppBot {
 
     // ── Quiz in-progress: evaluate answer ─────────────────────────────
     if (quizState?.active) {
-      const answer = text. replace(/[\/\\]/g, "").trim();
+      const answer = text.replace(/[\/\\]/g, "").trim();
       const feedback = quizHandler.evaluateAnswer(
         quizState,
         answer,
@@ -125,7 +135,9 @@ export class WhatsAppBot {
         await safeReply(message, feedback);
         // Send next question after a short gap
         setTimeout(async () => {
-          const { question } = await quizHandler.generateQuestion(quizState.subject);
+          const { question } = await quizHandler.generateQuestion(
+            quizState.subject,
+          );
           quizState.expectedAnswer = question.answer;
           quizState.currentQuestion += 1;
           sessionManager.setQuizState(chatId, quizState);
@@ -182,7 +194,11 @@ export class WhatsAppBot {
     }
 
     // ── Regular text tutoring ─────────────────────────────────────────
-    const reply = await messageHandler.handleText(message, subjectMode, needsSearch);
+    const reply = await messageHandler.handleText(
+      message,
+      subjectMode,
+      needsSearch,
+    );
     sessionManager.addToHistory(chatId, reply.slice(0, 200));
     await safeReply(message, reply);
   }
@@ -229,7 +245,11 @@ async function safeReply(message: Message, text: string) {
     }
     await message.reply(chunks[0]);
     for (let i = 1; i < chunks.length; i++) {
-      try { await message.reply(chunks[i]); } catch { break; }
+      try {
+        await message.reply(chunks[i]);
+      } catch {
+        break;
+      }
     }
   } else {
     await message.reply(text);
