@@ -29,7 +29,7 @@ export class WhatsAppBot {
     const chromePath =
       process.env.PUPPETEER_EXECUTABLE_PATH ||
       process.env.CHROME_PATH ||
-      "/usr/bin/chromium";
+      "/snap/bin/chromium";
 
     this.client = new Client({
       authStrategy: new LocalAuth({ dataPath: _sessionPath }),
